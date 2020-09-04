@@ -1,5 +1,5 @@
 use crate::activation_functions::sigmoid;
-use nalgebra::{DVector, Dynamic, Matrix, VecStorage};
+use nalgebra::DVector;
 use rand::distributions::Uniform;
 use rand::thread_rng;
 use std::sync::{Arc, Mutex, RwLock};
@@ -56,8 +56,8 @@ pub fn feed_forward(
 
         let tj = if outcome == 1.0 { 1.0 } else { 0.0 };
         let de_dvh = sigmoid(nv_dot_ov) - tj;
-        let update_out_vec = (sigmoid(nv_dot_ov) - tj) * *node_vec;
-        h_update.axpy(1.0, &(de_dvh * *out_vec), 1.0);
+        let update_out_vec = (sigmoid(nv_dot_ov) - tj) * &*node_vec;
+        h_update.axpy(1.0, &(de_dvh * &*out_vec), 1.0);
         out_vec.axpy(-1.0 * learning_rate, &update_out_vec, 1.0);
     }
     {
@@ -76,8 +76,8 @@ mod model_tests {
 
     #[test]
     fn test_model() {
-        let mut model = ConcurrentModel::new(3, 5);
-        model.feed_forward(0, vec![(0, 1.0)], 0.5);
+        let model = ConcurrentModel::new(3, 5);
+        
     }
 
     #[test]
