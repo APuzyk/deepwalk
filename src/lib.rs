@@ -3,6 +3,7 @@ pub mod graph;
 pub mod huffman_tree;
 pub mod model;
 pub mod model_concurrent;
+pub mod config;
 use crossbeam::sync::WaitGroup;
 use rand::seq::SliceRandom;
 use rand::thread_rng;

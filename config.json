@@ -1,0 +1,11 @@
+{
+	"learning_rate": 0.025,
+	"vector_dim": 128,
+	"walk_length": 10,
+	"window_size": 2,
+	"num_iterations": 25,
+	"input_file": "karate_network.txt",
+	"perf_file": "perf.txt",
+	"weight_file": "weights.txt",
+	"nthreads": 0,
+}
