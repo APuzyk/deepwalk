@@ -1,7 +1,10 @@
 use crate::activation_functions::sigmoid;
+use crate::graph::Graph;
 use nalgebra::{DVector, Dynamic, Matrix, VecStorage};
 use rand::distributions::Uniform;
 use rand::thread_rng;
+use std::fs::File;
+use std::io::Write;
 
 type DMatrixf64 = Matrix<f64, Dynamic, Dynamic, VecStorage<f64, Dynamic, Dynamic>>;
 
@@ -53,6 +56,17 @@ impl Model {
         let mut node_vec = self.weight_mat.column_mut(node_idx);
         node_vec.axpy(-1.0 * learning_rate, &h_update, 1.0);
         -1.0 * error
+    }
+
+    pub fn write_weight_mat(&self, mut f: File, graph: Graph) {
+        for (node_id, node_idx) in  graph.get_node_id_to_idx().iter() {
+            write!(f, "{}", node_id).expect("Writing to the weight file errored");
+            let node_vec = &self.weight_mat.column(*node_idx);
+            for i in 0..node_vec.shape().0 {
+                write!(f, " {}", node_vec[(i, 0)]).expect("Writing to the weight file errored");
+            }
+            write!(f, "\n").expect("Writing to the weight file errored");
+        }
     }
 }
 

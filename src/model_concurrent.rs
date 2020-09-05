@@ -1,8 +1,11 @@
 use crate::activation_functions::sigmoid;
+use crate::graph::Graph;
 use nalgebra::DVector;
 use rand::distributions::Uniform;
 use rand::thread_rng;
-use std::sync::{RwLock, Arc, Mutex};
+use std::fs::File;
+use std::io::Write;
+use std::sync::{Arc, Mutex, RwLock};
 
 type ConcurrentDVecf64 = Arc<RwLock<DVector<f64>>>;
 
@@ -38,6 +41,17 @@ impl ConcurrentModel {
             vec_dim,
         }
     }
+
+    pub fn write_weight_mat(&self, mut f: File, graph: Graph) {
+        for (node_id, node_idx) in  graph.get_node_id_to_idx().iter() {
+            write!(f, "{}", node_id).expect("Writing to the weight file errored");
+            let node_vec = &self.weight_mat[*node_idx].read().unwrap();
+            for i in 0..node_vec.shape().0 {
+                write!(f, " {}", node_vec[(i, 0)]).expect("Writing to the weight file errored");
+            }
+            write!(f, "\n").expect("Writing to the weight file errored");
+        }
+    }
 }
 
 pub fn step(
@@ -48,7 +62,6 @@ pub fn step(
     learning_rate: f64,
     error: Arc<Mutex<f64>>,
     vec_dim: usize,
-
 ) {
     let mut err = 0.0;
     let mut h_update = DVector::from_element(vec_dim, 0.0);

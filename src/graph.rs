@@ -134,6 +134,10 @@ impl Graph {
     pub fn get_node_idx(&self, node_id: &NodeID) -> Option<&usize> {
         self.node_to_idx_map.get(node_id)
     }
+
+    pub fn get_node_id_to_idx(&self) -> &HashMap<NodeID, usize> {
+        &self.node_to_idx_map
+    }
 }
 
 #[cfg(test)]

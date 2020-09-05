@@ -8,7 +8,9 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::{cmp, thread};
 use std::sync::{Arc, Mutex};
-
+use std::fs::File;
+use std::time::Instant;
+use std::io::Write;
 
 pub fn train(
     mut model: model::Model,
@@ -74,7 +76,11 @@ pub fn train_concurrent(
 
     let mut lr = learning_rate;
     let start_lr = 0.025;
-    
+
+    let mut f = File::create("perf.txt").expect("Unable to create output file for perf");
+    writeln!(f, "iteration learning_rate error time").expect("Unable to write to perf file");
+    let now = Instant::now();
+
     for iter in 0..num_iterations {
         let mut rng = thread_rng();
         node_ids.shuffle(&mut rng);
@@ -121,16 +127,22 @@ pub fn train_concurrent(
             });
         }
         wg.wait();
+        let err = *error.lock().unwrap() / (node_ids.len() as f64);
         if iter % 1 == 0 {
             println!("Iteration: {}", iter);
             println!("Learning Rate: {}", lr);
             
             println!(
                 "Error: {}",
-                *error.lock().unwrap() / (node_ids.len() as f64)
+                err
             );
         }
+        //"iteration learning_rate error time");
+        writeln!(f, "{} {} {} {}",
+            iter, lr, err, now.elapsed().as_secs()).expect("Unable to write to perf file");
 
         lr = lr - start_lr / (num_iterations as f64);
     }
+    let f = File::create("test.txt").expect("Unable to create output file for weights");
+    model.write_weight_mat(f, graph);
 }
