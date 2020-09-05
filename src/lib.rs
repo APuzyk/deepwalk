@@ -6,9 +6,9 @@ pub mod model_concurrent;
 use crossbeam::sync::WaitGroup;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use rayon::ThreadPoolBuilder;
-use std::cmp;
+use std::{cmp, thread};
 use std::sync::{Arc, Mutex};
+
 
 pub fn train(
     mut model: model::Model,
@@ -47,7 +47,7 @@ pub fn train(
                 }
             }
         }
-        if iter % 50 == 0 {
+        if iter % 1 == 0 {
             println!("Iteration: {}", iter);
             println!("Learning Rate: {}", lr);
             println!("Error: {}", error / (node_ids.len() as f64));
@@ -74,77 +74,57 @@ pub fn train_concurrent(
 
     let mut lr = learning_rate;
     let start_lr = 0.025;
-    let pool = ThreadPoolBuilder::new().num_threads(4).build().unwrap();
-
+    
     for iter in 0..num_iterations {
         let mut rng = thread_rng();
         node_ids.shuffle(&mut rng);
         let error = Arc::new(Mutex::new(0.0));
-        //let wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         for node in &node_ids {
             let mut targets = Vec::with_capacity(walk_len);
-            for v in graph.random_walk(node, walk_len) {
-                targets.push((v, graph.get_node_idx(&v).unwrap()));
-            }
-
             let mut outcomes = Vec::with_capacity(walk_len);
-            for (node_id, _) in &targets {
-                let outs = huffman_tree.get_indices_and_turns(node_id);
-                let mut this_encoding = Vec::with_capacity(outs.len());
-                for (output_idx, y) in outs {
-                    this_encoding.push((Arc::clone(&model.output_mat[output_idx]), y));
-                }
-                outcomes.push(this_encoding);
+
+            for v in graph.random_walk(node, walk_len) {
+                let target = graph.get_node_idx(&v).unwrap();
+                targets.push(*target);
+                let outs = huffman_tree.get_indices_and_turns(&v);
+                outcomes.push(outs);
             }
 
-            let mut step_weights = Vec::with_capacity(walk_len);
-            for (_, &node_idx) in &targets {
-                step_weights.push(Arc::clone(&model.weight_mat[node_idx]));
-            }
-            let error = Arc::clone(&error);
-            //let wg = wg.clone();
-            for v in 0..walk_len {
-                let arc_node = &step_weights[v];
-                let start = if window_size > v { 0 } else { v - window_size };
-                for u in start..v {
-                    let arc_outs = &outcomes[u];
-                    let lr = lr;
-                    pool.install(|| {
-                        model_concurrent::step(arc_node, arc_outs, lr, vec_dim, &error);
-                    });
-                }
+            let weight_mat = model.weight_mat.clone();
+            let output_mat = model.output_mat.clone();
+            let error = error.clone();
+            let wg = wg.clone();
+            thread::spawn(move || {
+                for v in 0..walk_len {
+                    let target = targets[v];
+                    let start = if window_size > v { 0 } else { v - window_size };
+                    for u in start..v {
+                        let outcomes = &outcomes[u];
+                        let weight_mat = weight_mat.clone();
+                        let output_mat = output_mat.clone();
+                        let error = error.clone();
+                        model_concurrent::step(weight_mat, output_mat,
+                            target, outcomes, learning_rate, error, vec_dim);
+                    }
 
-                for u in (v + 1)..cmp::min(v + window_size, walk_len) {
-                    let arc_outs = &outcomes[u];
-                    let lr = lr;
-                    pool.install(|| {
-                        model_concurrent::step(arc_node, arc_outs, lr, vec_dim, &error);
-                    });
+                    for u in (v + 1)..cmp::min(v + window_size, walk_len) {
+                        let outcomes = &outcomes[u];
+                        let weight_mat = weight_mat.clone();
+                        let output_mat = output_mat.clone();
+                        let error = error.clone();
+                        model_concurrent::step(weight_mat, output_mat,
+                            target, outcomes, learning_rate, error, vec_dim);
+                    }
                 }
-            }
-            // pool.install(move || {
-            //     for v in 0..walk_len {
-            //         let arc_node = &step_weights[v];
-            //         let start = if window_size > v { 0 } else { v - window_size };
-            //         for u in start..v {
-            //             let arc_outs = &outcomes[u];
-            //             let lr = lr;
-            //             model_concurrent::step(arc_node, arc_outs, lr, vec_dim, &error);
-            //         }
-
-            //         for u in (v + 1)..cmp::min(v + window_size, walk_len) {
-            //             let arc_outs = &outcomes[u];
-            //             let lr = lr;
-            //             model_concurrent::step(arc_node, arc_outs, lr, vec_dim, &error);
-            //         }
-            //     }
-            //drop(wg);
-            //});
+                drop(wg);
+            });
         }
-        //wg.wait();
-        if iter % 5 == 0 {
+        wg.wait();
+        if iter % 1 == 0 {
             println!("Iteration: {}", iter);
             println!("Learning Rate: {}", lr);
+            
             println!(
                 "Error: {}",
                 *error.lock().unwrap() / (node_ids.len() as f64)

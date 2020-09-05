@@ -4,7 +4,7 @@ fn main() {
     const VEC_DIM: usize = 128;
     const WALK_LENGTH: usize = 7;
     const WINDOW_SIZE: usize = 2;
-    const NUM_ITERATIONS: usize = 5;
+    const NUM_ITERATIONS: usize = 10;
     let learning_rate = 0.025;
 
     println!("Concurrent Run Starting...");
