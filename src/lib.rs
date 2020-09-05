@@ -13,6 +13,43 @@ use std::fs::File;
 use std::time::Instant;
 use std::io::Write;
 
+pub fn deepwalk(args: Vec<String>) {
+    let config = config::Config::new(&args[1]);
+
+    println!("Run Starting...");
+    let now = Instant::now();
+    let mut g = graph::Graph::new();
+    g.build_graph_from_file(config.input_file());
+    println!("...graph built..");
+    let hm = huffman_tree::HuffmanTree::new(g.get_node_iter());
+    println!("...huffman tree built...");
+    if config.nthreads() > 1 {
+        let model = model_concurrent::ConcurrentModel::new(g.num_nodes(), config.vector_dim());
+        train_concurrent(
+            model,
+            hm,
+            g,
+            config.walk_length(),
+            config.window_size(),
+            config.num_iterations(),
+            config.learning_rate()
+        )
+    } else {
+        let model = model::Model::new(g.num_nodes(), config.vector_dim());
+        train(
+            model,
+            hm,
+            g,
+            config.walk_length(),
+            config.window_size(),
+            config.num_iterations(),
+            config.learning_rate()
+        );
+    
+    }
+    println!("Run took {} seconds", now.elapsed().as_secs());
+
+}
 pub fn train(
     mut model: model::Model,
     huffman_tree: huffman_tree::HuffmanTree,

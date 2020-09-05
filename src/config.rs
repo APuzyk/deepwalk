@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::*;
 use std::io::BufReader;
 use std::fs::File;
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -17,8 +18,9 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(f: File) -> Config {
-        let reader = BufReader::new(f);
+    pub fn new<P: AsRef<Path>>(filename: &P) -> Config {
+        let file = File::open(filename).expect("Couldn't open config file");
+        let reader = BufReader::new(file);
         let config: Config = serde_json::from_reader(reader).expect("Couldn't read config file");
         config
     }
