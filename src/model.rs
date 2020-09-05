@@ -59,7 +59,7 @@ impl Model {
     }
 
     pub fn write_weight_mat(&self, mut f: File, graph: Graph) {
-        for (node_id, node_idx) in  graph.get_node_id_to_idx().iter() {
+        for (node_id, node_idx) in graph.get_node_id_to_idx().iter() {
             write!(f, "{}", node_id).expect("Writing to the weight file errored");
             let node_vec = &self.weight_mat.column(*node_idx);
             for i in 0..node_vec.shape().0 {

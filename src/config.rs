@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
-use serde_json::*;
-use std::io::BufReader;
+use serde::Deserialize;
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
     learning_rate: f64,
     vector_dim: usize,
@@ -25,17 +24,34 @@ impl Config {
         config
     }
 
-    pub fn learning_rate(&self) -> f64 { self.learning_rate }
-    pub fn vector_dim(&self) -> usize { self.vector_dim }
-    pub fn walk_length(&self) -> usize { self.walk_length }
-    pub fn window_size(&self) -> usize { self.window_size }
-    pub fn num_iterations(&self) -> usize { self.num_iterations }
-    pub fn input_file(&self) -> &str { &self.input_file[..] }
-    pub fn perf_file(&self) -> &str { &self.perf_file[..] }
-    pub fn weight_file(&self) -> &str { &self.weight_file[..] }
-    pub fn nthreads(&self) -> u32 { self.nthreads }
+    pub fn learning_rate(&self) -> f64 {
+        self.learning_rate
+    }
+    pub fn vector_dim(&self) -> usize {
+        self.vector_dim
+    }
+    pub fn walk_length(&self) -> usize {
+        self.walk_length
+    }
+    pub fn window_size(&self) -> usize {
+        self.window_size
+    }
+    pub fn num_iterations(&self) -> usize {
+        self.num_iterations
+    }
+    pub fn input_file(&self) -> &str {
+        &self.input_file[..]
+    }
+    pub fn perf_file(&self) -> &str {
+        &self.perf_file[..]
+    }
+    pub fn weight_file(&self) -> &str {
+        &self.weight_file[..]
+    }
+    pub fn nthreads(&self) -> u32 {
+        self.nthreads
+    }
 }
-
 
 #[cfg(test)]
 mod config_tests {
