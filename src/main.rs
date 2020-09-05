@@ -1,54 +1,46 @@
-// use rand::thread_rng;
-// use rand::seq::SliceRandom;
-// use std::cmp;
-
+use std::time::Instant;
 fn main() {
+    let file = "slashdot0902_clean.txt";
+    const VEC_DIM: usize = 128;
+    const WALK_LENGTH: usize = 7;
+    const WINDOW_SIZE: usize = 2;
+    const NUM_ITERATIONS: usize = 5;
+    let learning_rate = 0.025;
+
+    println!("Concurrent Run Starting...");
+    let now = Instant::now();
     let mut g = deepwalk::graph::Graph::new();
-
-    g.build_graph_from_file("lastfm_asia_edges.txt");
-
+    g.build_graph_from_file(file);
+    println!("...graph built..");
+    let model = deepwalk::model_concurrent::ConcurrentModel::new(g.num_nodes(), VEC_DIM);
     let hm = deepwalk::huffman_tree::HuffmanTree::new(g.get_node_iter());
-    let model = deepwalk::model_concurrent::ConcurrentModel::new(g.num_nodes(), 2);
-    
-    deepwalk::train(model, hm, g);
+    println!("...model and huffman tree built...");
+    deepwalk::train_concurrent(
+        model,
+        hm,
+        g,
+        WALK_LENGTH,
+        WINDOW_SIZE,
+        NUM_ITERATIONS,
+        learning_rate,
+    );
+    println!("Concurrent run took {} seconds", now.elapsed().as_secs());
 
-    
-    // let walk_len = 7;
-    // let window_size = 1;
-    // let num_iters = 100;
+    println!("Linear Run Starting...");
+    let now = Instant::now();
 
-
-    // let mut lr = 0.025;
-    // let start_lr = 0.025;
-
-    // for iter in 0..num_iters {
-    //     let mut rng = thread_rng();
-    //     node_ids.shuffle(&mut rng);
-    //     let mut error = 0.0;
-    //     for node in &node_ids {
-    //         let walk = g.random_walk(node, walk_len);
-    //         for v in 0..walk_len {
-    //             let target = g.get_node_idx(&walk[v]).unwrap();
-    //             let start = if window_size > v {0} else { v - window_size };
-    //             for u in start..v {
-    //                 let outcomes = hm.get_indices_and_turns(&walk[u]);
-    //                 error += model.feed_forward(*target, outcomes, lr);
-    //             }
-
-    //             for u in (v+1)..cmp::min(v+window_size, walk_len) {
-    //                 let outcomes = hm.get_indices_and_turns(&walk[u]);
-    //                 error += model.feed_forward(*target, outcomes, lr);
-    //             }
-    //         }
-    //     }
-    //     if iter % 50 == 0 {
-    //         println!("Iteration: {}", iter);
-    //         println!("Learning Rate: {}", lr);
-    //         println!("Error: {}", error/(node_ids.len() as f64));
-    //     }
-        
-    //     lr = lr - start_lr/(num_iters as f64);
-
-    // }
-
+    let mut g = deepwalk::graph::Graph::new();
+    g.build_graph_from_file(file);
+    let hm = deepwalk::huffman_tree::HuffmanTree::new(g.get_node_iter());
+    let model = deepwalk::model::Model::new(g.num_nodes(), VEC_DIM);
+    deepwalk::train(
+        model,
+        hm,
+        g,
+        WALK_LENGTH,
+        WINDOW_SIZE,
+        NUM_ITERATIONS,
+        learning_rate,
+    );
+    println!("Linear run took {} seconds", now.elapsed().as_secs());
 }

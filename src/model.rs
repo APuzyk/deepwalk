@@ -25,7 +25,7 @@ impl Model {
         }
     }
 
-    pub fn feed_forward(
+    pub fn step(
         &mut self,
         node_idx: usize,
         outcomes: Vec<(usize, f64)>,
@@ -33,28 +33,25 @@ impl Model {
     ) -> f64 {
         let node_vec = self.weight_mat.column(node_idx);
         let mut error = 0.0;
-        //let mut de_dvh_vec = Vec::with_capacity(outcomes.len());
         let mut h_update = DVector::from_element(self.vec_dim, 0.0);
         for (idx, outcome) in outcomes {
             let mut out_vec = self.output_mat.column_mut(idx);
-
             let nv_dot_ov = out_vec.dot(&node_vec);
-            let e = sigmoid(outcome * nv_dot_ov).ln();
-            error += e;
 
-            let tj = if outcome == 1.0 { 1.0 } else { 0.0 };
-            let de_dvh = sigmoid(nv_dot_ov) - tj;
-            //de_dvh_vec.push(sigmoid(nv_dot_ov) - tj);
-            let update_out_vec = (sigmoid(nv_dot_ov) - tj) * &node_vec;
-            h_update.axpy(1.0, &(de_dvh * &out_vec), 1.0);
-            out_vec.axpy(-1.0 * learning_rate, &update_out_vec, 1.0);
+            error += sigmoid(outcome * nv_dot_ov).ln();
+
+            // Derivative of error with respect to out_vec*node_vec
+            let de_dvh = if outcome == 1.0 {
+                sigmoid(nv_dot_ov) - 1.0
+            } else {
+                sigmoid(nv_dot_ov)
+            };
+
+            h_update.axpy(de_dvh, &out_vec, 1.0);
+            out_vec.axpy(-1.0 * learning_rate * de_dvh, &node_vec, 1.0);
         }
         let mut node_vec = self.weight_mat.column_mut(node_idx);
         node_vec.axpy(-1.0 * learning_rate, &h_update, 1.0);
-        if error.is_infinite() {
-            panic!("haha");
-        }
-        //println!("Error: {}", -1.0 * error);
         -1.0 * error
     }
 }
@@ -66,7 +63,7 @@ mod model_tests {
     #[test]
     fn test_model() {
         let mut model = Model::new(3, 5);
-        model.feed_forward(0, vec![(0, 1.0)], 0.5);
+        model.step(0, vec![(0, 1.0)], 0.5);
     }
 
     #[test]

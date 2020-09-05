@@ -36,12 +36,12 @@ impl ConcurrentModel {
     }
 }
 
-pub fn feed_forward(
-    node_vec: ConcurrentDVecf64,
-    outcomes: Vec<(ConcurrentDVecf64, f64)>,
+pub fn step(
+    node_vec: &ConcurrentDVecf64,
+    outcomes: &Vec<(ConcurrentDVecf64, f64)>,
     learning_rate: f64,
     vec_dim: usize,
-    error: Arc<Mutex<f64>>,
+    error: &Arc<Mutex<f64>>,
 ) {
     let mut err = 0.0;
     let mut h_update = DVector::from_element(vec_dim, 0.0);
@@ -54,11 +54,10 @@ pub fn feed_forward(
         let e = sigmoid(outcome * nv_dot_ov).ln();
         err += e;
 
-        let tj = if outcome == 1.0 { 1.0 } else { 0.0 };
+        let tj = if *outcome == 1.0 { 1.0 } else { 0.0 };
         let de_dvh = sigmoid(nv_dot_ov) - tj;
-        let update_out_vec = (sigmoid(nv_dot_ov) - tj) * &*node_vec;
-        h_update.axpy(1.0, &(de_dvh * &*out_vec), 1.0);
-        out_vec.axpy(-1.0 * learning_rate, &update_out_vec, 1.0);
+        h_update.axpy(1.0 * de_dvh, &out_vec, 1.0);
+        out_vec.axpy(-1.0 * de_dvh * learning_rate, &node_vec, 1.0);
     }
     {
         let mut node_vec = node_vec.write().unwrap();
@@ -66,7 +65,7 @@ pub fn feed_forward(
     }
     {
         let mut error = error.lock().unwrap();
-        *error += err;
+        *error += -1.0 * err;
     }
 }
 
@@ -77,7 +76,6 @@ mod model_tests {
     #[test]
     fn test_model() {
         let model = ConcurrentModel::new(3, 5);
-        
     }
 
     #[test]
