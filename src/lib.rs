@@ -4,14 +4,13 @@ pub mod graph;
 pub mod huffman_tree;
 pub mod model;
 pub mod model_concurrent;
-use crossbeam::sync::WaitGroup;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::cmp;
 use std::fs::File;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use std::{cmp, thread};
 
 pub fn deepwalk(args: Vec<String>) {
     let config = config::Config::new(&args[1]);
@@ -48,6 +47,9 @@ pub fn train(
 
     let mut lr = config.learning_rate();
     let start_lr = 0.025;
+    let mut f = File::create("perf.txt").expect("Unable to create output file for perf");
+    writeln!(f, "iteration learning_rate error time").expect("Unable to write to perf file");
+    let now = Instant::now();
 
     for iter in 0..config.num_iterations() {
         let mut rng = thread_rng();
@@ -58,22 +60,32 @@ pub fn train(
             for v in 0..walk_len {
                 let target = graph.get_node_idx(&walk[v]).unwrap();
                 let start = if window_size > v { 0 } else { v - window_size };
-                for u in start..v {
-                    let outcomes = huffman_tree.get_indices_and_turns(&walk[u]);
-                    error += model.step(*target, outcomes, lr);
-                }
-
-                for u in (v + 1)..cmp::min(v + window_size, walk_len) {
-                    let outcomes = huffman_tree.get_indices_and_turns(&walk[u]);
-                    error += model.step(*target, outcomes, lr);
+                for u in start..cmp::min(v + window_size, walk_len) {
+                    if u != v {
+                        let outcomes = huffman_tree.get_indices_and_turns(&walk[u]);
+                        error += model.step(*target, outcomes, lr);
+                    }
                 }
             }
         }
         if iter % 1 == 0 {
-            println!("Iteration: {}", iter);
-            println!("Learning Rate: {}", lr);
-            println!("Error: {}", error / (node_ids.len() as f64));
+            println!(
+                "Iteration: {}\nLearning Rate: {}\nError: {}",
+                iter,
+                lr,
+                error / (node_ids.len() as f64)
+            );
         }
+
+        writeln!(
+            f,
+            "{} {} {} {}",
+            iter,
+            lr,
+            error / (node_ids.len() as f64),
+            now.elapsed().as_secs()
+        )
+        .expect("Unable to write to perf file");
 
         lr = lr - start_lr / (config.num_iterations() as f64);
     }
@@ -97,53 +109,49 @@ pub fn train_concurrent(
     let mut lr = config.learning_rate();
     let start_lr = 0.025;
 
-    let mut f = File::create("perf.txt").expect("Unable to create output file for perf");
+    let mut f = File::create(config.perf_file()).expect("Unable to create output file for perf");
     writeln!(f, "iteration learning_rate error time").expect("Unable to write to perf file");
     let now = Instant::now();
-
+    let model = Arc::new(model);
     for iter in 0..config.num_iterations() {
         let mut rng = thread_rng();
         node_ids.shuffle(&mut rng);
         let error = Arc::new(Mutex::new(0.0));
-        let wg = WaitGroup::new();
-        for node in &node_ids {
-            let mut targets = Vec::with_capacity(walk_len);
-            let mut outcomes = Vec::with_capacity(walk_len);
+        crossbeam::scope(|scope| {
+            for node in &node_ids {
+                let mut targets = Vec::with_capacity(walk_len);
+                let mut outcomes = Vec::with_capacity(walk_len);
 
-            for v in graph.random_walk(node, walk_len) {
-                let target = graph.get_node_idx(&v).unwrap();
-                targets.push(*target);
-                let outs = huffman_tree.get_indices_and_turns(&v);
-                outcomes.push(outs);
-            }
+                for v in graph.random_walk(node, walk_len) {
+                    let target = graph.get_node_idx(&v).unwrap();
+                    targets.push(*target);
+                    let outs = huffman_tree.get_indices_and_turns(&v);
+                    outcomes.push(outs);
+                }
 
-            let weight_mat = model.weight_mat.clone();
-            let output_mat = model.output_mat.clone();
-            let error = error.clone();
-            let wg = wg.clone();
-            let learning_rate = lr;
-            thread::spawn(move || {
-                for v in 0..walk_len {
-                    let target = targets[v];
-                    let start = if window_size > v { 0 } else { v - window_size };
-                    for u in start..cmp::min(v + window_size, walk_len) {
-                        if u != v {
-                            model_concurrent::step(
-                                weight_mat.clone(),
-                                output_mat.clone(),
-                                target,
-                                &outcomes[u],
-                                learning_rate,
-                                error.clone(),
-                                vec_dim,
-                            );
+                let model = Arc::clone(&model);
+                let error = error.clone();
+                let learning_rate = lr;
+                scope.spawn(move |_| {
+                    for v in 0..walk_len {
+                        let target = &targets[v];
+                        let start = if window_size > v { 0 } else { v - window_size };
+                        for u in start..cmp::min(v + window_size, walk_len) {
+                            if u != v {
+                                model.step(
+                                    *target,
+                                    &outcomes[u],
+                                    learning_rate,
+                                    error.clone(),
+                                    vec_dim,
+                                );
+                            }
                         }
                     }
-                }
-                drop(wg);
-            });
-        }
-        wg.wait();
+                });
+            }
+        })
+        .expect("Node run failed");
         let err = *error.lock().unwrap() / (node_ids.len() as f64);
         if iter % 1 == 0 {
             println!("Iteration: {}", iter);
@@ -156,6 +164,6 @@ pub fn train_concurrent(
 
         lr = lr - start_lr / (config.num_iterations() as f64);
     }
-    let f = File::create("test.txt").expect("Unable to create output file for weights");
+    let f = File::create(config.weight_file()).expect("Unable to create output file for weights");
     model.write_weight_mat(f, graph);
 }

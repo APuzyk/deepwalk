@@ -52,42 +52,41 @@ impl ConcurrentModel {
             write!(f, "\n").expect("Writing to the weight file errored");
         }
     }
-}
 
-pub fn step(
-    weight_mat: Arc<Vec<ConcurrentDVecf64>>,
-    output_mat: Arc<Vec<ConcurrentDVecf64>>,
-    node_idx: usize,
-    outcomes: &Vec<(usize, f64)>,
-    learning_rate: f64,
-    error: Arc<Mutex<f64>>,
-    vec_dim: usize,
-) {
-    let mut err = 0.0;
-    let mut h_update = DVector::from_element(vec_dim, 0.0);
-    {
-        let node_vec = weight_mat[node_idx].read().unwrap();
+    pub fn step(
+        &self,
+        node_idx: usize,
+        outcomes: &Vec<(usize, f64)>,
+        learning_rate: f64,
+        error: Arc<Mutex<f64>>,
+        vec_dim: usize,
+    ) {
+        let mut err = 0.0;
+        let mut h_update = DVector::from_element(vec_dim, 0.0);
+        {
+            let node_vec = self.weight_mat[node_idx].read().unwrap();
 
-        for (out_idx, outcome) in outcomes {
-            let mut out_vec = output_mat[*out_idx].write().unwrap();
+            for (out_idx, outcome) in outcomes {
+                let mut out_vec = self.output_mat[*out_idx].write().unwrap();
 
-            let nv_dot_ov = out_vec.dot(&node_vec);
-            let e = sigmoid(outcome * nv_dot_ov).ln();
-            err += e;
+                let nv_dot_ov = out_vec.dot(&node_vec);
+                let e = sigmoid(outcome * nv_dot_ov).ln();
+                err += e;
 
-            let tj = if *outcome == 1.0 { 1.0 } else { 0.0 };
-            let de_dvh = sigmoid(nv_dot_ov) - tj;
-            h_update.axpy(1.0 * de_dvh, &out_vec, 1.0);
-            out_vec.axpy(-1.0 * de_dvh * learning_rate, &node_vec, 1.0);
+                let tj = if *outcome == 1.0 { 1.0 } else { 0.0 };
+                let de_dvh = sigmoid(nv_dot_ov) - tj;
+                h_update.axpy(1.0 * de_dvh, &out_vec, 1.0);
+                out_vec.axpy(-1.0 * de_dvh * learning_rate, &node_vec, 1.0);
+            }
         }
-    }
-    {
-        let mut node_vec = weight_mat[node_idx].write().unwrap();
-        node_vec.axpy(-1.0 * learning_rate, &h_update, 1.0);
-    }
-    {
-        let mut error = error.lock().unwrap();
-        *error += -1.0 * err;
+        {
+            let mut node_vec = self.weight_mat[node_idx].write().unwrap();
+            node_vec.axpy(-1.0 * learning_rate, &h_update, 1.0);
+        }
+        {
+            let mut error = error.lock().unwrap();
+            *error += -1.0 * err;
+        }
     }
 }
 
