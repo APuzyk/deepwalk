@@ -164,6 +164,5 @@ pub fn train_concurrent(
 
         lr = lr - start_lr / (config.num_iterations() as f64);
     }
-    let f = File::create(config.weight_file()).expect("Unable to create output file for weights");
-    model.write_weight_mat(f, graph);
+    model.write_weight_mat(&config.weight_file(), graph);
 }

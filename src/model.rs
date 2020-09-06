@@ -5,6 +5,7 @@ use rand::distributions::Uniform;
 use rand::thread_rng;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 type DMatrixf64 = Matrix<f64, Dynamic, Dynamic, VecStorage<f64, Dynamic, Dynamic>>;
 
@@ -58,7 +59,8 @@ impl Model {
         -1.0 * error
     }
 
-    pub fn write_weight_mat(&self, mut f: File, graph: Graph) {
+    pub fn write_weight_mat<P: AsRef<Path>>(&self, weight_file: &P, graph: Graph) {
+        let mut f = File::create(weight_file).expect("Unable to create output file for weights");
         for (node_id, node_idx) in graph.get_node_id_to_idx().iter() {
             write!(f, "{}", node_id).expect("Writing to the weight file errored");
             let node_vec = &self.weight_mat.column(*node_idx);
