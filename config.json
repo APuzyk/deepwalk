@@ -3,9 +3,9 @@
 	"vector_dim": 128,
 	"walk_length": 10,
 	"window_size": 2,
-	"num_iterations": 5,
+	"num_iterations": 25,
 	"input_file": "lastfm_asia_edges.txt",
 	"perf_file": "perf.txt",
 	"weight_file": "weights.txt",
-	"nthreads": 2
+	"nthreads": 4
 }

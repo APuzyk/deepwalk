@@ -5,8 +5,8 @@ use rand::distributions::Uniform;
 use rand::thread_rng;
 use std::fs::File;
 use std::io::Write;
-use std::sync::{Arc, Mutex, RwLock};
 use std::path::Path;
+use std::sync::{Arc, Mutex, RwLock};
 
 type ConcurrentDVecf64 = Arc<RwLock<DVector<f64>>>;
 
@@ -43,7 +43,7 @@ impl ConcurrentModel {
         }
     }
 
-    pub fn write_weight_mat<P: AsRef<Path>>(&self, weight_file: &P, graph: Graph) {
+    pub fn write_weight_mat<P: AsRef<Path>>(&self, weight_file: &P, graph: Arc<Graph>) {
         let mut f = File::create(weight_file).expect("Unable to create output file for weights");
         for (node_id, node_idx) in graph.get_node_id_to_idx().iter() {
             write!(f, "{}", node_id).expect("Writing to the weight file errored");

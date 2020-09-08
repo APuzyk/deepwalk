@@ -13,7 +13,7 @@ pub struct Config {
     input_file: String,
     perf_file: String,
     weight_file: String,
-    nthreads: u32,
+    nthreads: usize,
 }
 
 impl Config {
@@ -48,7 +48,7 @@ impl Config {
     pub fn weight_file(&self) -> &str {
         &self.weight_file[..]
     }
-    pub fn nthreads(&self) -> u32 {
+    pub fn nthreads(&self) -> usize {
         self.nthreads
     }
 }
