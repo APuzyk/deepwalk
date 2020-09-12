@@ -30,6 +30,6 @@ We have included an example run of the algorithm on the karate network included 
 
 The configurations for this run can be found in `karate_config.json`.  We have plotted the output weights along with the canonical communities.
 
-!(Karate)[https://github.com/APuzyk/deepwalk/blob/master/karate_2d.png]
+![Karate](https://github.com/APuzyk/deepwalk/blob/master/karate_2d.png)
 
 We observed similar results to what Perozzi, et.al saw in their runs on the Karate network.  Communities were moved into similar posotions in the 2d space of the weight matrix.
