@@ -105,7 +105,7 @@ pub fn train_concurrent(
         node_ids.push(i.get_id());
     }
     let mut lr = config.learning_rate();
-    let start_lr = 0.025;
+    let start_lr = lr;
 
     let mut f = File::create(config.perf_file()).expect("Unable to create output file for perf");
     writeln!(f, "iteration learning_rate error time").expect("Unable to write to perf file");
