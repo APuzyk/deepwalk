@@ -33,3 +33,11 @@ The configurations for this run can be found in `karate_config.json`.  We have p
 ![Karate](https://github.com/APuzyk/deepwalk/blob/master/karate_2d.png)
 
 We observed similar results to what Perozzi, et.al saw in their runs on the Karate network.  Communities were moved into similar posotions in the 2d space of the weight matrix.
+
+#### Note on Error
+
+Perozzi, et. al. suggested a configuration of walk_length = 40 and window_size = 10 as a good initial values.  We have use this for our karate example.  Interesting to note is that while the error does not converge and actually remains flat during training we still observe the separation of nodes into their canonical communities.  
+
+During other experiments where we have used deepwalk as an input into classification tasks on much larger graphs ([deezer](https://snap.stanford.edu/data/gemsec-Deezer.html)) we have seen improvement of the classifiers over random despite the error on the deepwalk not converging.
+
+For this reason we suggest any evaluation of deepwalk parameters be done within the context of the final classificaiton or other use case.
